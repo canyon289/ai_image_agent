@@ -1,3 +1,6 @@
+# TEMPORARY NOTE
+This repo is a clone of ai_app_basics but will be modified to turn into ai_agent_basics
+
 # Welcome!
 
 This repo contains everything you need for a hands-on workshop where we’ll build, evaluate, and optimize a local LLM-powered system. Unlike many LLM demos that focus on text generation, we’ll be leveraging one of the most powerful (and often overlooked) capabilities of LLMs: **zero-shot classification**.
