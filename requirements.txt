@@ -1,5 +1,5 @@
 numpy
 ollama
-gradio
 jupyter
 datasette
+mcp[cli]
