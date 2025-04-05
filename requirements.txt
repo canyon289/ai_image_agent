@@ -3,3 +3,4 @@ ollama
 jupyter
 datasette
 mcp[cli]
+fastmcp
