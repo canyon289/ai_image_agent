@@ -7,6 +7,9 @@ TODO: Figure out what resources are
 Prompts are user controlled, the user decides if they want them
 Resources are client controlled
 Tools are model controlled
+
+
+Oh I see, the user prompt is augmented
 """
 
 import asyncio
@@ -26,7 +29,7 @@ class MCPClient:
         self.exit_stack = AsyncExitStack()
     
     async def model_call(prompt):
-        model = 'gemma3:4b'
+        model = 'gemma3:12b'
         response: ChatResponse = chat(model=model, messages=[
             {
                 'role': 'user',
