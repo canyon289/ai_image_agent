@@ -9,4 +9,5 @@ dependencies = [
     "mcp[cli]>=1.6.0",
     "numpy>=2.2.4",
     "ollama>=0.4.7",
+    "fastmcp",
 ]
