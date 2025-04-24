@@ -65,8 +65,6 @@ Once installed, run the following commands in your terminal to download the mode
 
 ```shell
 ollama pull gemma2:2b
-ollama pull gemma2:2b-instruct-fp16
-ollama pull gemma2:2b-instruct-q2_K
 ```
 
 ⚠️ **Note:** Some models may not run depending on your hardware. AI models, while getting easier to use, still come with real-world constraints—this is part of the learning process!
@@ -87,18 +85,18 @@ pip install uv
 #### **Create and activate your environment**
 
 ```shell
-uv venv gemma-app
+uv venv 
 ```
 
 Activate the environment:
 
 - **On macOS/Linux:**  
   ```shell
-  source gemma-app/bin/activate
+  source .venv/bin/activate
   ```
 - **On Windows:**  
   ```shell
-  gemma-app\Scripts\activate
+  .venv\Scripts\activate
   ```
 
 #### **Install dependencies**

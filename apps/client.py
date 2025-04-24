@@ -1,6 +1,5 @@
 """Gemma MCP Client,
 
-
 TODO: Understand prompts and how to use them. How does LLM or framework select which prompt to use
 TODO: Figure out what resources are
 
@@ -21,6 +20,35 @@ from mcp.client.stdio import stdio_client
 
 from ollama import chat
 from ollama import ChatResponse
+
+TOOL_PATTERN = f"```json\n(.*?)\n``"
+
+
+###########################################
+# All these are the same from the notebook
+###########################################
+
+def model_call(model_prompt):
+    
+    response: ChatResponse = chat(model=model, messages=[
+      {
+        'role': 'user',
+        'content': model_prompt,
+      },
+    ])
+    return response['message']['content']
+
+def augmented_model_call(system_prompt, user_prompt, print_prompt = False):
+    combined_prompt = f"{system_prompt}\n{user_prompt}"
+    return combined_prompt
+
+def parse_response(model_response):
+    if tool_call := re.search(pattern, model_response):
+        return json.loads(tool_call.groups(0)[0])[0]
+
+###########################################
+# These are all new
+###########################################
 
 class MCPClient:
     def __init__(self):
@@ -57,52 +85,47 @@ class MCPClient:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-    def create_system_prompt(tools):
-        """Creates system prompt from tools provided by MCP server"""
-
     async def process_query(self, query: str) -> str:
-        """Process a query using Claude and available tools"""
+        """Process a query using Gemma and available tools"""
+
         messages = [
             {
                 "role": "user",
                 "content": query
             }
         ]
-
         all_tools = await self.session.list_tools()
+
         available_tools = [{
             "name": tool.name,
             "description": tool.description,
             "input_schema": tool.inputSchema
         } for tool in all_tools.tools]
-        print(available_tools)
 
-        # TODO: Learn how to use prompts
+        # Get all prompts
         all_prompts = await self.session.list_prompts()
-        print(all_prompts)
+        available_prompts = [prompt for prompt in all_prompts.prompts]
 
-        breakpoint()
+        # We also can get one prompt
+        # https://github.com/modelcontextprotocol/python-sdk?tab=readme-ov-file#writing-mcp-clients
+        prompt = await self.session.get_prompt("weather_prompt")
+        system_prompt = prompt.messages[0].content.text
 
-        # Need to change to gemma and add gemma tool declarations
-        # response = self.anthropic.messages.create(
-        #     model="claude-3-5-sonnet-20241022",
-        #     max_tokens=1000,
-        #     messages=messages,
-        #     tools=available_tools
-        # )
 
-        # Process response and handle tool calls
         final_text = []
-
         assistant_message_content = []
 
-        # Need to change this for Ollama
+        response = augmented_model_call(system_prompt=system_prompt, user_prompt=query)
 
         # Detect if a response is a tool call or text
-        for content in response.content:
-            if content.type == 'text':
-                final_text.append(content.text)
-                assistant_message_content.append(content)
+        function_call_json = parse_response(model_response)
+
+        if function_call_json:
+            self.session.get_tool("weather_tool")
+
+        else content.type == 'text':
+            final_text.append(response)
+            assistant_message_content.append(response)
 
             # Extract tool name
             elif content.type == 'tool_use':
@@ -130,7 +153,7 @@ class MCPClient:
                     ]
                 })
 
-                # Get next response from Claude
+                # Get next response from Gemma
                 response = self.anthropic.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=1000,
@@ -169,7 +192,7 @@ async def main():
     client = MCPClient()
     try:
         # Hardcode the client for now
-        server = "mcp_server.py"
+        server = "weather_server.py"
         await client.connect_to_server(server)
         # await client.connect_to_server(sys.argv[1])
         await client.chat_loop()
@@ -177,5 +200,10 @@ async def main():
         await client.cleanup()
 
 if __name__ == "__main__":
-    import sys
-    asyncio.run(main())
+    # import sys
+    # asyncio.run(main())
+
+    mcp.run(transport='stdio')
+
+
+    # mcp dev apps/weather_server.py 
