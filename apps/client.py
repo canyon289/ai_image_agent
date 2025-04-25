@@ -12,8 +12,10 @@ Oh I see, the user prompt is augmented
 """
 
 import asyncio
+import re
 from typing import Optional
 from contextlib import AsyncExitStack
+import logging
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -22,6 +24,10 @@ from ollama import chat
 from ollama import ChatResponse
 
 TOOL_PATTERN = f"```json\n(.*?)\n``"
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Weather app")
 
 
 ###########################################
@@ -43,7 +49,7 @@ def augmented_model_call(system_prompt, user_prompt, print_prompt = False):
     return combined_prompt
 
 def parse_response(model_response):
-    if tool_call := re.search(pattern, model_response):
+    if tool_call := re.search(TOOL_PATTERN, model_response):
         return json.loads(tool_call.groups(0)[0])[0]
 
 ###########################################
@@ -85,15 +91,16 @@ class MCPClient:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-    async def process_query(self, query: str) -> str:
-        """Process a query using Gemma and available tools"""
+    async def process_user_prompt(self, user_prompt: str) -> str:
+        """Process a user_prompt using Gemma and available tools"""
 
         messages = [
             {
                 "role": "user",
-                "content": query
+                "content": user_prompt
             }
         ]
+
         all_tools = await self.session.list_tools()
 
         available_tools = [{
@@ -115,7 +122,8 @@ class MCPClient:
         final_text = []
         assistant_message_content = []
 
-        response = augmented_model_call(system_prompt=system_prompt, user_prompt=query)
+        import pdb; pdb.set_trace()
+        model_response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
 
         # Detect if a response is a tool call or text
         function_call_json = parse_response(model_response)
@@ -123,45 +131,40 @@ class MCPClient:
         if function_call_json:
             self.session.get_tool("weather_tool")
 
-        else content.type == 'text':
+        # No tool call
+        else:
             final_text.append(response)
             assistant_message_content.append(response)
 
-            # Extract tool name
-            elif content.type == 'tool_use':
-                tool_name = content.name
-                tool_args = content.input
+            # # Extract tool name
+            # elif content.type == 'tool_use':
+            #     tool_name = content.name
+            #     tool_args = content.input
 
-                # Execute tool call
-                result = await self.session.call_tool(tool_name, tool_args)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+            #     # Execute tool call
+            #     result = await self.session.call_tool(tool_name, tool_args)
+            #     final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
 
-                assistant_message_content.append(content)
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant_message_content
-                })
+            #     assistant_message_content.append(content)
+            #     messages.append({
+            #         "role": "assistant",
+            #         "content": assistant_message_content
+            #     })
 
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": content.id,
-                            "content": result.content
-                        }
-                    ]
-                })
+            #     messages.append({
+            #         "role": "user",
+            #         "content": [
+            #             {
+            #                 "type": "tool_result",
+            #                 "tool_use_id": content.id,
+            #                 "content": result.content
+            #             }
+            #         ]
+            #     })
 
-                # Get next response from Gemma
-                response = self.anthropic.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=1000,
-                    messages=messages,
-                    tools=available_tools
-                )
-
-                final_text.append(response.content[0].text)
+            #     # Get next response from Gemma
+            #     response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
+            #     final_text.append(response.content[0].text)
 
         return "\n".join(final_text)
 
@@ -172,12 +175,14 @@ class MCPClient:
 
         while True:
             try:
-                query = input("\nQuery: ").strip()
+                user_prompt = input("\nuser_prompt: ").strip()
+                # user_prompt = "Whats the weather in london?"
+                logging.info("User prompt is %s", user_prompt)
 
-                if query.lower() == 'quit':
+                if user_prompt.lower() == 'q':
                     break
 
-                response = await self.process_query(query)
+                response = await self.process_user_prompt(user_prompt)
                 print("\n" + response)
 
             except Exception as e:
@@ -200,10 +205,4 @@ async def main():
         await client.cleanup()
 
 if __name__ == "__main__":
-    # import sys
-    # asyncio.run(main())
-
-    mcp.run(transport='stdio')
-
-
-    # mcp dev apps/weather_server.py 
+    asyncio.run(main())
