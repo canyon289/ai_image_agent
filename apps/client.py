@@ -23,18 +23,24 @@ from mcp.client.stdio import stdio_client
 from ollama import chat
 from ollama import ChatResponse
 
-TOOL_PATTERN = f"```json\n(.*?)\n``"
-
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("Weather app")
+TOOL_PATTERN = f"```json\n(.*?)\n``"
+
+import json
+import re
+
+logging.basicConfig(
+    level=logging.DEBUG, # Log everything from DEBUG level upwards
+)
 
 
 ###########################################
 # All these are the same from the notebook
 ###########################################
 
-def model_call(model_prompt):
+def model_call(model_prompt, model='gemma3:12b'):
     
     response: ChatResponse = chat(model=model, messages=[
       {
@@ -46,11 +52,12 @@ def model_call(model_prompt):
 
 def augmented_model_call(system_prompt, user_prompt, print_prompt = False):
     combined_prompt = f"{system_prompt}\n{user_prompt}"
-    return combined_prompt
+    return model_call(combined_prompt)
 
 def parse_response(model_response):
     if tool_call := re.search(TOOL_PATTERN, model_response):
-        return json.loads(tool_call.groups(0)[0])[0]
+        parsed_arg = json.loads(tool_call.groups(0)[0])[0]
+        return parsed_arg
 
 ###########################################
 # These are all new
@@ -111,60 +118,48 @@ class MCPClient:
 
         # Get all prompts
         all_prompts = await self.session.list_prompts()
-        available_prompts = [prompt for prompt in all_prompts.prompts]
 
+        available_prompts = [prompt for prompt in all_prompts.prompts]
+        
         # We also can get one prompt
         # https://github.com/modelcontextprotocol/python-sdk?tab=readme-ov-file#writing-mcp-clients
         prompt = await self.session.get_prompt("weather_prompt")
         system_prompt = prompt.messages[0].content.text
 
+        # import pdb; pdb.set_trace()
 
-        final_text = []
-        assistant_message_content = []
-
-        import pdb; pdb.set_trace()
+        # Put together system prompt and
         model_response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
 
         # Detect if a response is a tool call or text
         function_call_json = parse_response(model_response)
 
+        final_text = []
+        assistant_message_content = []
+
+        # Tool call is found
         if function_call_json:
-            self.session.get_tool("weather_tool")
+            logging.debug("Tool call with %s" % function_call_json)
+
+            result = await self.session.call_tool('weather_tool', function_call_json)
+
+            # Get the weather
+            weather_result = result.content[0].text
+
+            # This is how we can construct the prompt
+            # There also seems to be an mcp.response functionality but I don't know how to use it
+            weather_prompt = await self.session.get_prompt("weather_response_prompt", 
+                                                            parameters = {function_call_json["city"], weather_result})
+            import pdb; pdb.set_trace()
+
+            # We already checked for weather so we don't need to go again
+            model_response = model_call(function_response_prompt)
 
         # No tool call
         else:
-            final_text.append(response)
-            assistant_message_content.append(response)
-
-            # # Extract tool name
-            # elif content.type == 'tool_use':
-            #     tool_name = content.name
-            #     tool_args = content.input
-
-            #     # Execute tool call
-            #     result = await self.session.call_tool(tool_name, tool_args)
-            #     final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-
-            #     assistant_message_content.append(content)
-            #     messages.append({
-            #         "role": "assistant",
-            #         "content": assistant_message_content
-            #     })
-
-            #     messages.append({
-            #         "role": "user",
-            #         "content": [
-            #             {
-            #                 "type": "tool_result",
-            #                 "tool_use_id": content.id,
-            #                 "content": result.content
-            #             }
-            #         ]
-            #     })
-
-            #     # Get next response from Gemma
-            #     response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
-            #     final_text.append(response.content[0].text)
+            logging.debug("No tool call")
+            final_text.append(model_response)
+            assistant_message_content.append(model_response)
 
         return "\n".join(final_text)
 

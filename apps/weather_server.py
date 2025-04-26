@@ -32,5 +32,19 @@ def weather_prompt() -> str:
     '''
     return system_prompt
 
+@mcp.prompt()
+def weather_prompt(weather) -> str:
+    """Weather system prompt"""
+    system_prompt = '''
+    '''
+
+    return system_prompt
+
+@mcp.prompt()
+def weather_response_prompt(city, weather) -> str:
+    """Weather response prompt"""
+    weather_prompt = f"The weather in {city} is {weather}, tell me the weather nicely"
+    return weather_prompt 
+
 if __name__ == "__main__":
     mcp.run()
