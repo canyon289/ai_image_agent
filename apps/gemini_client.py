@@ -24,9 +24,12 @@ from ollama import chat
 from ollama import ChatResponse
 
 from mcp.server.fastmcp import FastMCP
+import genai
 
 mcp = FastMCP("Weather app")
-TOOL_PATTERN = f"```json\n(.*?)\n``"
+
+# Don't need this anymore
+# TOOL_PATTERN = f"```json\n(.*?)\n``"
 
 import json
 import re
@@ -35,49 +38,15 @@ logging.basicConfig(
     level=logging.DEBUG, # Log everything from DEBUG level upwards
 )
 
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+model = "gemini-2.0-flash"
 
-###########################################
-# All these are the same from the notebook
-###########################################
-
-def model_call(model_prompt, model='gemma3:12b'):
-    
-    response: ChatResponse = chat(model=model, messages=[
-      {
-        'role': 'user',
-        'content': model_prompt,
-      },
-    ])
-    return response['message']['content']
-
-def augmented_model_call(system_prompt, user_prompt, print_prompt = False):
-    combined_prompt = f"{system_prompt}\n{user_prompt}"
-    return model_call(combined_prompt)
-
-def parse_response(model_response):
-    if tool_call := re.search(TOOL_PATTERN, model_response):
-        parsed_arg = json.loads(tool_call.groups(0)[0])[0]
-        return parsed_arg
-
-###########################################
-# These are all new
-###########################################
 
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-    
-    async def model_call(prompt):
-        model = 'gemma3:12b'
-        response: ChatResponse = chat(model=model, messages=[
-            {
-                'role': 'user',
-                'content': prompt,
-            },
-        ])
-        return response['message']['content']
 
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server"""
@@ -101,57 +70,46 @@ class MCPClient:
     async def process_user_prompt(self, user_prompt: str) -> str:
         """Process a user_prompt using Gemma and available tools"""
 
-        messages = [
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
-
         all_tools = await self.session.list_tools()
 
         available_tools = [{
             "name": tool.name,
             "description": tool.description,
-            "input_schema": tool.inputSchema
+            "parameters": tool.inputSchema
         } for tool in all_tools.tools]
 
-        # Get all prompts
-        all_prompts = await self.session.list_prompts()
-
-        available_prompts = [prompt for prompt in all_prompts.prompts]
-        
-        # We also can get just one prompt
-        # https://github.com/modelcontextprotocol/python-sdk?tab=readme-ov-file#writing-mcp-clients
-        prompt = await self.session.get_prompt("weather_prompt")
-        system_prompt = prompt.messages[0].content.text
-
-        # Put together system prompt 
-        model_response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
-
-        # Detect if a response is a tool call or text
-        function_call_json = parse_response(model_response)
+        # Send request with function declarations
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",  # Or your preferred model supporting function calling
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                tools=[tools],
+            ),  # Example other config
+        )
 
         final_text = []
         assistant_message_content = []
 
-        # Tool call is found
-        if function_call_json:
+        if response.candidates[0].content.parts[0].function_call:
             logging.info("Tool call with %s" % function_call_json)
 
-            result = await self.session.call_tool('weather_tool', function_call_json)
+            function_call = response.candidates[0].content.parts[0].function_call
 
-            # Get the weather
-            weather_result = result.content[0].text
+            result = await self.session.call_tool(function_call, function_call.args)
 
-            # This is how we can construct the prompt
-            weather_prompt_message = await self.session.get_prompt("weather_response_prompt", 
-                                                            arguments={
-                                                    "city": function_call_json["city"], 
-                                                    "weather": weather_result
-                                                })
-            weather_prompt_text = weather_prompt_message.messages[0].content.text
-            logging.info("Weather prompt is %s" % weather_prompt_text)
+            contents.append(types.Content(role="user", parts=tool_response_parts))
+            logging.info(f"Added {len(tool_response_parts)} tool response parts to history.")
+
+            response = await client.aio.models.generate_content(
+                model=model,
+                contents=contents,  # Send updated history
+                config=types.GenerateContentConfig(
+                    temperature=1.0,
+                    tools=[tools],
+                ),  # Keep sending same config
+            )
+            contents.append(response.candidates[0].content)
 
 
             # We already checked for weather so we don't need to go again
@@ -174,7 +132,6 @@ class MCPClient:
         while True:
             try:
                 user_prompt = input("\nuser_prompt: ").strip()
-                # user_prompt = "Whats the weather in london?"
                 logging.info("User prompt is: %s", user_prompt)
 
                 if user_prompt.lower() == 'q':
