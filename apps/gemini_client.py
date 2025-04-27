@@ -1,15 +1,4 @@
-"""Gemma MCP Client,
-
-TODO: Understand prompts and how to use them. How does LLM or framework select which prompt to use
-TODO: Figure out what resources are
-
-Prompts are user controlled, the user decides if they want them
-Resources are client controlled
-Tools are model controlled
-
-
-Oh I see, the user prompt is augmented
-"""
+"""Gemma MCP Client,"""
 
 import asyncio
 import re
@@ -19,20 +8,15 @@ import logging
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.server.fastmcp import FastMCP
 
 from ollama import chat
 from ollama import ChatResponse
 
-from mcp.server.fastmcp import FastMCP
-import genai
+from google import genai
+
 
 mcp = FastMCP("Weather app")
-
-# Don't need this anymore
-# TOOL_PATTERN = f"```json\n(.*?)\n``"
-
-import json
-import re
 
 logging.basicConfig(
     level=logging.DEBUG, # Log everything from DEBUG level upwards
