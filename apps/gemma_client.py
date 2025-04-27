@@ -1,35 +1,23 @@
-"""Gemma MCP Client,
-
-TODO: Understand prompts and how to use them. How does LLM or framework select which prompt to use
-TODO: Figure out what resources are
-
-Prompts are user controlled, the user decides if they want them
-Resources are client controlled
-Tools are model controlled
-
-
-Oh I see, the user prompt is augmented
-"""
+"""Gemma MCP Client."""
 
 import asyncio
 import re
+import json
 from typing import Optional
 from contextlib import AsyncExitStack
 import logging
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.server.fastmcp import FastMCP
 
 from ollama import chat
 from ollama import ChatResponse
 
-from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("Weather app")
 TOOL_PATTERN = f"```json\n(.*?)\n``"
 
-import json
-import re
 
 logging.basicConfig(
     level=logging.DEBUG, # Log everything from DEBUG level upwards
@@ -69,16 +57,6 @@ class MCPClient:
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
     
-    async def model_call(prompt):
-        model = 'gemma3:12b'
-        response: ChatResponse = chat(model=model, messages=[
-            {
-                'role': 'user',
-                'content': prompt,
-            },
-        ])
-        return response['message']['content']
-
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server"""
         server_params = StdioServerParameters(
@@ -174,7 +152,6 @@ class MCPClient:
         while True:
             try:
                 user_prompt = input("\nuser_prompt: ").strip()
-                # user_prompt = "Whats the weather in london?"
                 logging.info("User prompt is: %s", user_prompt)
 
                 if user_prompt.lower() == 'q':
@@ -194,10 +171,9 @@ class MCPClient:
 async def main():
     client = MCPClient()
     try:
-        # Hardcode the client for now
+        # Hardcode the client just for the class
         server = "weather_server.py"
         await client.connect_to_server(server)
-        # await client.connect_to_server(sys.argv[1])
         await client.chat_loop()
     finally:
         await client.cleanup()
