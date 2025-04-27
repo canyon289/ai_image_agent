@@ -1,7 +1,6 @@
 """Gemma MCP Client,"""
 
 import asyncio
-import re
 from typing import Optional
 from contextlib import AsyncExitStack
 import logging
@@ -14,6 +13,9 @@ from ollama import chat
 from ollama import ChatResponse
 
 from google import genai
+from google.genai import types
+
+import os
 
 
 mcp = FastMCP("Weather app")
@@ -54,59 +56,79 @@ class MCPClient:
     async def process_user_prompt(self, user_prompt: str) -> str:
         """Process a user_prompt using Gemma and available tools"""
 
+        # Store all exchanges using proper gemini contents
+        contents = [types.Content(role="user", parts=[types.Part(text=user_prompt)])]
+
         all_tools = await self.session.list_tools()
 
-        available_tools = [{
-            "name": tool.name,
-            "description": tool.description,
-            "parameters": tool.inputSchema
-        } for tool in all_tools.tools]
+        available_tools = types.Tool(function_declarations=[
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.inputSchema,
+                }
+                for tool in all_tools.tools
+            ])
 
         # Send request with function declarations
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",  # Or your preferred model supporting function calling
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.7,
-                tools=[tools],
+                tools=[available_tools],
             ),  # Example other config
         )
 
-        final_text = []
-        assistant_message_content = []
+        contents.append(response.candidates[0].content)
 
         if response.candidates[0].content.parts[0].function_call:
-            logging.info("Tool call with %s" % function_call_json)
+            tool_response_parts: List[types.Part] = []
 
             function_call = response.candidates[0].content.parts[0].function_call
+            logging.info("Tool call with %s" % function_call)
 
-            result = await self.session.call_tool(function_call, function_call.args)
+            tool_name = function_call.name
+            args = function_call.args or {}  # Ensure args is a dict
 
+            try:
+                # Call the session's tool executor
+                tool_result =  await self.session.call_tool(tool_name, args)
+                logging.info(f"MCP tool '{tool_name}' executed successfully.")
+                if tool_result.isError:
+                    tool_response = {"error": tool_result.content[0].text}
+                else:
+                    tool_response = {"result": tool_result.content[0].text}
+            except Exception as e:
+                tool_response = {"error":  f"Tool execution failed: {type(e).__name__}: {e}"}
+
+            # Prepare FunctionResponse Part
+            tool_response_parts.append(
+                types.Part.from_function_response(
+                    name=tool_name, response=tool_response
+                )
+            )
             contents.append(types.Content(role="user", parts=tool_response_parts))
-            logging.info(f"Added {len(tool_response_parts)} tool response parts to history.")
 
+            logging.info(f"Added {len(tool_response_parts)} tool response parts to history.")
             response = await client.aio.models.generate_content(
                 model=model,
                 contents=contents,  # Send updated history
                 config=types.GenerateContentConfig(
                     temperature=1.0,
-                    tools=[tools],
+                    tools=[available_tools],
                 ),  # Keep sending same config
             )
+
+            logging.info("Final response is: %s", response.candidates[0].content)
             contents.append(response.candidates[0].content)
-
-
-            # We already checked for weather so we don't need to go again
-            model_response = model_call(weather_prompt_text)
-            final_text.append(model_response)
 
         # No tool call
         else:
-            logging.debug("No tool call")
-            final_text.append(model_response)
-            assistant_message_content.append(model_response)
-
-        return "\n".join(final_text)
+            logging.info("No tool call")
+            contents.append(response.candidates[0].content)
+        return contents[-1].parts[0].text
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
@@ -116,6 +138,8 @@ class MCPClient:
         while True:
             try:
                 user_prompt = input("\nuser_prompt: ").strip()
+                # user_prompt = "What is the weather in london?"
+                # user_prompt = "How are you?"
                 logging.info("User prompt is: %s", user_prompt)
 
                 if user_prompt.lower() == 'q':
