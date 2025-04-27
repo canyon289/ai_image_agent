@@ -3,7 +3,7 @@ All documentation is here https://github.com/modelcontextprotocol/python-sdk
 
 
 ## Debugging Servers
-`mcp dev apps/weather_server.py`
+For debugging server `mcp dev apps/weather_server.py`
 
 Running the servers
 1. Navigate to apps directory
