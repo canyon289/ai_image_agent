@@ -1,4 +1,4 @@
-# import logging
+import logging
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("Echo")
@@ -12,8 +12,8 @@ def echo_resource(message: str) -> str:
 @mcp.tool()
 def weather_tool(city: str) -> str:
     """Get weather"""
-    # logging.info("Called weather function %s", city)
-    if city.lower() in {"Austin", "Sydney"}:
+    logging.info("Server called with weather function %s", city)
+    if city.lower() in {"austin", "sydney"}:
         return "sunny"
     else:
         return "cloudy"
