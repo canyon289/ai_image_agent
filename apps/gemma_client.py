@@ -121,14 +121,14 @@ class MCPClient:
 
         available_prompts = [prompt for prompt in all_prompts.prompts]
         
-        # We also can get one prompt
+        # We also can get just one prompt
         # https://github.com/modelcontextprotocol/python-sdk?tab=readme-ov-file#writing-mcp-clients
         prompt = await self.session.get_prompt("weather_prompt")
         system_prompt = prompt.messages[0].content.text
 
         # import pdb; pdb.set_trace()
 
-        # Put together system prompt and
+        # Put together system prompt 
         model_response = augmented_model_call(system_prompt=system_prompt, user_prompt=user_prompt)
 
         # Detect if a response is a tool call or text
@@ -139,7 +139,7 @@ class MCPClient:
 
         # Tool call is found
         if function_call_json:
-            logging.debug("Tool call with %s" % function_call_json)
+            logging.info("Tool call with %s" % function_call_json)
 
             result = await self.session.call_tool('weather_tool', function_call_json)
 
@@ -147,13 +147,18 @@ class MCPClient:
             weather_result = result.content[0].text
 
             # This is how we can construct the prompt
-            # There also seems to be an mcp.response functionality but I don't know how to use it
-            weather_prompt = await self.session.get_prompt("weather_response_prompt", 
-                                                            parameters = {function_call_json["city"], weather_result})
-            import pdb; pdb.set_trace()
+            weather_prompt_message = await self.session.get_prompt("weather_response_prompt", 
+                                                            arguments={
+                                                    "city": function_call_json["city"], 
+                                                    "weather": weather_result
+                                                })
+            weather_prompt_text = weather_prompt_message.messages[0].content.text
+            logging.info("Weather prompt is %s" % weather_prompt_text)
+
 
             # We already checked for weather so we don't need to go again
-            model_response = model_call(function_response_prompt)
+            model_response = model_call(weather_prompt_text)
+            final_text.append(model_response)
 
         # No tool call
         else:
@@ -172,7 +177,7 @@ class MCPClient:
             try:
                 user_prompt = input("\nuser_prompt: ").strip()
                 # user_prompt = "Whats the weather in london?"
-                logging.info("User prompt is %s", user_prompt)
+                logging.info("User prompt is: %s", user_prompt)
 
                 if user_prompt.lower() == 'q':
                     break
