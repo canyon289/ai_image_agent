@@ -1,4 +1,4 @@
-"""Gemma MCP Client,"""
+"""Gemini MCP Client,"""
 
 import asyncio
 from typing import Optional
@@ -8,9 +8,6 @@ import logging
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.server.fastmcp import FastMCP
-
-from ollama import chat
-from ollama import ChatResponse
 
 from google import genai
 from google.genai import types
