@@ -28,7 +28,7 @@ logging.basicConfig(
 # All these are the same from the notebook
 ###########################################
 
-def model_call(model_prompt, model='gemma3:12b'):
+def model_call(model_prompt, model='gemma3:4b'):
     
     response: ChatResponse = chat(model=model, messages=[
       {
@@ -44,7 +44,7 @@ def augmented_model_call(system_prompt, user_prompt, print_prompt = False):
 
 def parse_response(model_response):
     if tool_call := re.search(TOOL_PATTERN, model_response):
-        parsed_arg = json.loads(tool_call.groups(0)[0])[0]
+        parsed_arg = json.loads(tool_call.groups(0)[0])
         return parsed_arg
 
 ###########################################

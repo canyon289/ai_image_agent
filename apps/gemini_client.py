@@ -21,7 +21,7 @@ logging.basicConfig(
     level=logging.DEBUG, # Log everything from DEBUG level upwards
 )
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key="AIzaSyCu2fu5q18u4V8kzKF4imOqVclydXMOvbw")
 model = "gemini-2.0-flash"
 
 
@@ -68,7 +68,6 @@ class MCPClient:
             ])
 
         # Send request with function declarations
-
         response = client.models.generate_content(
             model="gemini-2.0-flash",  # Or your preferred model supporting function calling
             contents=contents,

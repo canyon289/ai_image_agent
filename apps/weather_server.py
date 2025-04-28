@@ -1,7 +1,7 @@
 import logging
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Echo")
+mcp = FastMCP("weather_server")
 
 @mcp.resource("echo://{message}")
 def echo_resource(message: str) -> str:
@@ -32,13 +32,13 @@ def weather_prompt() -> str:
     '''
     return system_prompt
 
-@mcp.prompt()
-def weather_prompt(weather) -> str:
-    """Weather system prompt"""
-    system_prompt = '''
-    '''
+# @mcp.prompt()
+# def weather_prompt(weather) -> str:
+#     """Weather system prompt"""
+#     system_prompt = '''
+#     '''
 
-    return system_prompt
+#     return system_prompt
 
 @mcp.prompt()
 def weather_response_prompt(city, weather) -> str:
