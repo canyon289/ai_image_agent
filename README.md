@@ -1,16 +1,15 @@
 # Welcome!
 
-In this workshop, you'll build a lightweight AI agent from scratch —  
-one that can recognize when it needs external information, call a tool to get it, and continue the conversation based on real results.
+In this workshop, we'll dig into the image capabilities of the Gemma series.
 
-You'll see how modern LLMs can:
-- Detect when a tool call is needed.
-- Call those tools automatically.
-- Dynamically adjust their behavior based on new information.
+We'll
+- 🧾 Extract structured information from images (e.g. OCR on receipts)
+- 🖼️ Classify and count objects using LLMs
+- ⚙️ Route behavior based on image content
+- 🚦 Prototype image-to-action workflows (e.g. “if dog, then…”)
 
 All running **locally** using **Gemma 3 models** through **Ollama** — with no cloud dependencies and no unnecessary complexity.
 
-Later, we'll extend this by using the **Model Context Protocol (MCP)** to let models dynamically discover and use tools at runtime.
 
 This workshop was inspired in part by a talk given by **Ravin Kumar** during [Hugo Bowne-Anderson's course, *Building LLM-Powered Applications for Data Scientists and Software Engineers*](https://maven.com/s/course/d56067f338).
 
@@ -22,25 +21,21 @@ The workshop is divided into three progressive phases:
 
 ---
 
-### ✅ Phase 0: Building a Basic LLM App Locally
+### ✅ Phase 0: Get an Image Flow working locally
 
 You'll start by setting up a simple but complete local application:
 - Connect to a local Gemma 3 model using Ollama.
 - Send basic prompts and receive responses.
-- Build a basic Gradio UI to interact with the model.
-- Log prompts and responses into a SQLite database for observability.
+- Build a basic Gradio UI to interact with the model that takes in images
 
-This gives you a working foundation before we introduce tool use and agentic behavior.
 
 ---
 
-### ✅ Phase 1: Basic Agent with Manual Tool Calling
+### ✅ Phase 1: Add model routing
 
 After building the base app, you'll create your first real agent:
-- Use system prompts to teach the model when to suggest calling a function.
-- Parse the model’s outputs to detect when a tool call is needed.
-- Call the appropriate Python function.
-- Optionally reinject the tool result back into the model to generate a better final user-facing response.
+
+- 
 
 You'll also build a simple Gradio app that shows:
 - What the user sees.
@@ -48,12 +43,10 @@ You'll also build a simple Gradio app that shows:
 
 ---
 
-### ✅ Phase 2: Discoverable Tools with the Model Context Protocol (MCP)
+### ✅ Phase 2: Connect everything together with GradIO
 
 Finally, you'll move from hardcoded tool lists to a dynamic system:
-- Run a simple MCP server that exposes available tools.
-- Let the agent discover tools at runtime without needing to be explicitly told in advance.
-- Understand how MCP changes the architecture of agent systems.
+- Add all this to GradIO for a con
 
 ---
 
@@ -72,6 +65,8 @@ Then pull the required models:
 ```bash
 ollama pull gemma3:4b-it-qat
 ollama pull gemma3:12b-it-qat  # optional if your machine can handle it
+ollama pull gemma3:27b-it-qat  # optional if your machine can handle it
+
 ```
 
 ---
