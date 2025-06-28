@@ -21,7 +21,7 @@ The workshop is divided into three progressive phases:
 
 ---
 
-### ✅ Phase 0: Get an Image Flow working locally
+### ✅ Phase 0: Get started with image workflows locally
 
 You'll start by setting up a simple but complete local application:
 - Connect to a local Gemma 3 model using Ollama.
@@ -31,22 +31,22 @@ You'll start by setting up a simple but complete local application:
 
 ---
 
-### ✅ Phase 1: Add model routing
+### ✅ Phase 1: Various image capabilities of Gemma
 
-After building the base app, you'll create your first real agent:
+After a basic prompting we'll show various image capabilities
 
-- 
-
-You'll also build a simple Gradio app that shows:
-- What the user sees.
-- What happened under the hood (tool calls and tool results).
+- Object recognition
+- Counting
+- OCR
 
 ---
 
 ### ✅ Phase 2: Connect everything together with GradIO
 
 Finally, you'll move from hardcoded tool lists to a dynamic system:
-- Add all this to GradIO for a con
+- Add all this to GradIO
+- Make the image input seamless for users
+- Use the LLM to provide routed responses
 
 ---
 
