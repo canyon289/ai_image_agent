@@ -13,6 +13,8 @@ All running **locally** using **Gemma 3 models** through **Ollama** — with no 
 
 This workshop was inspired in part by a talk given by **Ravin Kumar** during [Hugo Bowne-Anderson's course, *Building LLM-Powered Applications for Data Scientists and Software Engineers*](https://maven.com/s/course/d56067f338).
 
+Next cohort starts July 8 and use code `LLM10` for 10% off (valid until July 5, 2025)!
+
 ---
 
 ## 🛠 What You'll Build
